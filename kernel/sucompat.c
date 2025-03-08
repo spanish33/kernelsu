@@ -22,6 +22,8 @@
 
 extern void ksu_escape_to_root();
 
+static bool ksu_sucompat_integrated __read_mostly = true;
+
 static void __user *userspace_stack_buffer(const void *d, size_t len)
 {
 	/* To avoid having to mmap a page in userspace, just write below the stack
@@ -50,6 +52,10 @@ int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
 {
 	const char su[] = SU_PATH;
 
+	if (!ksu_sucompat_integrated) {
+ 		return 0;
+ 	}
+
 	if (!ksu_is_allow_uid(current_uid().val)) {
 		return 0;
 	}
@@ -70,6 +76,10 @@ int ksu_handle_stat(int *dfd, const char __user **filename_user, int *flags)
 {
 	// const char sh[] = SH_PATH;
 	const char su[] = SU_PATH;
+
+	if (!ksu_sucompat_integrated) {
+ 		return 0;
+ 	}
 
 	if (!ksu_is_allow_uid(current_uid().val)) {
 		return 0;
@@ -115,6 +125,10 @@ int ksu_handle_execveat_sucompat(int *fd, struct filename **filename_ptr,
 	const char sh[] = KSUD_PATH;
 	const char su[] = SU_PATH;
 
+	if (!ksu_sucompat_integrated) {
+ 		return 0;
+ 	}
+
 	if (unlikely(!filename_ptr))
 		return 0;
 
@@ -144,6 +158,10 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 	const char su[] = SU_PATH;
 	char path[sizeof(su) + 1];
 
+	if (!ksu_sucompat_integrated){
+ 		return 0;
+ 	}
+
 	if (unlikely(!filename_user))
 		return 0;
 
@@ -166,6 +184,10 @@ int ksu_handle_execve_sucompat(int *fd, const char __user **filename_user,
 
 int ksu_handle_devpts(struct inode *inode)
 {
+	if (!ksu_sucompat_integrated){
+ 		return 0;
+ 	}
+
 	if (!current->mm) {
 		return 0;
 	}
@@ -273,6 +295,9 @@ void ksu_sucompat_init()
 	su_kps[1] = init_kprobe(SYS_FACCESSAT_SYMBOL, faccessat_handler_pre);
 	su_kps[2] = init_kprobe(SYS_NEWFSTATAT_SYMBOL, newfstatat_handler_pre);
 	su_kps[3] = init_kprobe("pts_unix98_lookup", pts_unix98_lookup_pre);
+#else
+	ksu_sucompat_integrated = true;
+	pr_info("ksu_sucompat_init: hooks enabled: execve/execveat_su, faccessat, stat, devpts\n");
 #endif
 }
 
@@ -282,5 +307,8 @@ void ksu_sucompat_exit()
 	for (int i = 0; i < ARRAY_SIZE(su_kps); i++) {
 		destroy_kprobe(&su_kps[i]);
 	}
+#else
+	ksu_sucompat_integrated = false;
+	pr_info("ksu_sucompat_exit: hooks disabled: execve/execveat_su, faccessat, stat, devpts\n");
 #endif
 }
