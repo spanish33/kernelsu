@@ -535,6 +535,29 @@ static void do_stop_input_hook(struct work_struct *work)
 {
 	unregister_kprobe(&input_event_kp);
 }
+#else
+int ksu_handle_execve_ksud(const char __user *filename_user,
+                           const char __user *const __user *__argv)
+{
+	struct user_arg_ptr argv = { .ptr.native = __argv };
+	struct filename filename_in, *filename_p;
+	char path[32];
+
+	if (!ksu_execveat_hook) {
+		return 0;
+	}
+
+	if (!filename_user)
+		return 0;
+
+	memset(path, 0, sizeof(path));
+	ksu_strncpy_from_user_nofault(path, filename_user, 32);
+
+	filename_in.name = path;
+	filename_p = &filename_in;
+
+	return ksu_handle_execveat_ksud(AT_FDCWD, &filename_p, &argv, NULL, NULL);
+}
 #endif
 
 static void stop_vfs_read_hook()
