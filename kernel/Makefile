@@ -20,7 +20,7 @@ NEUTRINO := $(findstring -NeutrinoKernel,$(CONFIG_LOCALVERSION))
 
 # Hardcode KSU_VERSION for Neutrino
 ifeq ($(NEUTRINO),-NeutrinoKernel)
-KSU_VERSION=12081
+KSU_VERSION=12490
 KSU_LOCALVERSION=$(KSU_VERSION)-neutrino
 $(info -- KernelSU version: $(KSU_LOCALVERSION))
 else
